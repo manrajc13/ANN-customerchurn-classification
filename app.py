@@ -37,7 +37,7 @@ num_of_products = st.slider('Number of Products', 1, 4)
 has_cr_card = st.selectbox('Has Credit Card', [0, 1])
 is_active_member = st.selectbox('Is Active Member', [0, 1])
 
-input_data = ({
+input_data = {
     'CreditScore': [credit_score],
     'Gender' : [le.transform([gender])[0]],
     'Age' : [age],
@@ -46,27 +46,41 @@ input_data = ({
     'NumOfProducts' : [num_of_products],
     'HasCrCard' : [has_cr_card],
     'IsActiveMember' : [is_active_member],
-    'EstimatedSalary' : [estimated_salary]
-})
+    'EstimatedSalary' : [estimated_salary],
+    'Geography' : [geography]
+}
 
-# encode geography 
-geo_encoded = ohe.transform([[geography]]).toarray()
-geo_encoded_df = pd.DataFrame(geo_encoded, columns = ohe.get_feature_names_out(['Geography']))
 
-input_data = pd.DataFrame(input_data)
-input_data = pd.concat([input_data, geo_encoded_df], axis=1)
 
-# now apply scaling
-input_data_scaled = scaler.transform(input_data)
 
-# Predict churn
+## preprocess the data
+
+
+def preprocess_input_dictionary(input_data):
+    df = pd.DataFrame(input_data)
+    # df['Gender'] = le.transform(df['Gender'])
+    df.reset_index(drop=True, inplace=True)
+    encoded_geo = ohe.transform(df[['Geography']]).toarray()
+    encoded_geo_df = pd.DataFrame(encoded_geo, columns=ohe.get_feature_names_out(['Geography']))
+    encoded_geo_df.reset_index(drop=True, inplace=True)
+    df.drop(['Geography'], axis=1, inplace=True) 
+    df = pd.concat([df, encoded_geo_df], axis=1)
+    df = scaler.transform(df)
+    return df
+
+input_data_scaled = preprocess_input_dictionary(input_data)
+
+## predict the churn 
 
 if st.button(label='Predict Customer Churn'):
 
     prediction = model.predict(input_data_scaled)
     prediction_proba = prediction[0][0]
 
+    st.write(f'Prediction Probability: {prediction_proba:.2f}')
+    # Display the prediction
+
     if prediction_proba > 0.5:
-        st.write('The customer is likely to churn.' + ' with probability of : ' + str(prediction_proba))
+        st.write('The customer is likely to churn.')
     else:
-        st.write('The customer is not likely to churn' + ' with probability of : ' + str(prediction_proba))
+        st.write('The customer is not likely to churn')
